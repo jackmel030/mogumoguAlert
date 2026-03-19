@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>菇菇計時器</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
   <div id="app">
@@ -21,6 +22,7 @@
 
     <div id="add-section">
       <button id="btn-add" class="btn-primary" onclick="openAddModal()">+ 新增計時器</button>
+      <button id="btn-ocr" class="btn-ocr" onclick="openOcrModal()">📷 截圖辨識</button>
     </div>
 
     <div id="timer-list">
@@ -68,13 +70,64 @@
             <button class="time-btn" data-minutes="0" onclick="selectTime(this)">自訂</button>
           </div>
           <div id="custom-time" class="hidden">
-            <input type="number" id="input-custom-minutes" placeholder="分鐘" min="1" max="1440">
+            <div class="custom-time-inputs">
+              <input type="number" id="input-custom-minutes" placeholder="分" min="0" max="1440">
+              <span class="time-separator">:</span>
+              <input type="number" id="input-custom-seconds" placeholder="秒" min="0" max="59">
+            </div>
           </div>
         </div>
 
         <div class="modal-actions">
           <button class="btn-cancel" onclick="closeAddModal()">取消</button>
           <button class="btn-confirm" onclick="addTimer()">開始計時</button>
+        </div>
+      </div>
+    </div>
+    <!-- OCR Modal -->
+    <div id="ocr-overlay" class="modal-overlay hidden" onclick="closeOcrModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>📷 截圖辨識倒數時間</h2>
+
+        <div class="form-group">
+          <label>上傳遊戲截圖</label>
+          <div class="ocr-upload-area" id="ocr-drop-zone" onclick="document.getElementById('ocr-file-input').click()">
+            <input type="file" id="ocr-file-input" accept="image/*" style="display:none" onchange="handleOcrFile(event)">
+            <div id="ocr-preview-area">
+              <div class="upload-placeholder">
+                <span style="font-size:36px">📸</span>
+                <p>點擊上傳或貼上截圖</p>
+                <p class="hint">支援直接 Ctrl+V / Cmd+V 貼上</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="ocr-status" class="hidden">
+          <div class="ocr-progress-bar"><div class="ocr-progress-fill" id="ocr-progress-fill"></div></div>
+          <p id="ocr-status-text">辨識中...</p>
+        </div>
+
+        <div id="ocr-result" class="hidden">
+          <div class="form-group">
+            <label>辨識結果</label>
+            <div class="ocr-result-time">
+              <div class="custom-time-inputs">
+                <input type="number" id="ocr-minutes" placeholder="分" min="0" max="1440">
+                <span class="time-separator">:</span>
+                <input type="number" id="ocr-seconds" placeholder="秒" min="0" max="59">
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>備註名稱（選填）</label>
+            <input type="text" id="ocr-name" placeholder="例：公司門口" maxlength="20">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-cancel" onclick="closeOcrModal()">取消</button>
+          <button class="btn-confirm" id="ocr-confirm-btn" onclick="addTimerFromOcr()" disabled>開始計時</button>
         </div>
       </div>
     </div>

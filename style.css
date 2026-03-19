@@ -336,7 +336,36 @@ header .subtitle {
   margin-top: 10px;
 }
 
-#custom-time input,
+.custom-time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-time-inputs input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.custom-time-inputs input:focus {
+  border-color: var(--primary);
+}
+
+.time-separator {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
 .form-group > input[type="text"] {
   width: 100%;
   padding: 12px;
@@ -349,7 +378,6 @@ header .subtitle {
   transition: border-color 0.2s;
 }
 
-#custom-time input:focus,
 .form-group > input[type="text"]:focus {
   border-color: var(--primary);
 }
@@ -426,4 +454,108 @@ header .subtitle {
   color: var(--text-dim);
   padding: 4px;
   font-size: 18px;
+}
+
+/* OCR Button */
+.btn-ocr {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border: 2px solid var(--purple);
+  border-radius: 12px;
+  background: rgba(167, 139, 250, 0.08);
+  color: var(--purple);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-ocr:active {
+  background: rgba(167, 139, 250, 0.2);
+  transform: scale(0.98);
+}
+
+/* OCR Upload */
+.ocr-upload-area {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ocr-upload-area:active,
+.ocr-upload-area.drag-over {
+  border-color: var(--purple);
+}
+
+.upload-placeholder {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-dim);
+}
+
+.upload-placeholder p {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.upload-placeholder .hint {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+#ocr-preview-area img {
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+}
+
+/* OCR Progress */
+#ocr-status {
+  margin: 12px 0;
+}
+
+.ocr-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.ocr-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--purple), var(--primary));
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.3s;
+}
+
+#ocr-status-text {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* OCR Result */
+.ocr-result-time {
+  margin-bottom: 8px;
+}
+
+.btn-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#add-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
