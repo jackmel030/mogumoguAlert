@@ -2,6 +2,8 @@
 
 Pikmin Bloom 毒蘑菇重生計時器 PWA。打完蘑菇後截圖，自動辨識倒數時間並計算重生提醒。
 
+**Demo**: https://jackmel030.github.io/mogumoguAlert/
+
 ## 功能
 
 - 截圖 OCR 自動辨識剩餘時間、蘑菇類型（小 / 一般 / 巨大）

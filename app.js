@@ -11,7 +11,20 @@ const MUSHROOM_TYPES = {
 };
 
 // ─── State ───
-let timers = JSON.parse(localStorage.getItem('pikmin-timers') || '[]');
+let timers = loadTimers();
+
+function loadTimers() {
+  try {
+    const data = JSON.parse(localStorage.getItem('pikmin-timers') || '[]');
+    if (!Array.isArray(data)) return [];
+    // 啟動時清除過期超過 10 分鐘的計時器
+    const now = Date.now();
+    return data.filter(t => !t.ready || (now - (t.readyAt || t.endTime)) < EXPIRED_AUTO_REMOVE_MS);
+  } catch {
+    localStorage.removeItem('pikmin-timers');
+    return [];
+  }
+}
 let selectedType = 'normal';
 let selectedMinutes = 5;
 let tickInterval = null;
