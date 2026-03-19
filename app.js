@@ -1,3 +1,15 @@
+// ─── Constants ───
+const MAX_TIMERS = 10;
+const RESPAWN_SECONDS = 300; // 5 minutes
+const MANUAL_BUFFER_SECONDS = 30; // human reaction buffer
+const EXPIRED_AUTO_REMOVE_MS = 10 * 60 * 1000; // 10 minutes
+
+const MUSHROOM_TYPES = {
+  small:  { icon: '🍄', iconSize: '20px', name: '小毒蘑菇', color: '#a0522d' },
+  normal: { icon: '🍄', iconSize: '28px', name: '一般毒蘑菇', color: '#8B4513' },
+  large:  { icon: '🍄', iconSize: '38px', name: '巨大毒蘑菇', color: '#6B2FA0' },
+};
+
 // ─── State ───
 let timers = JSON.parse(localStorage.getItem('pikmin-timers') || '[]');
 let selectedType = 'normal';
@@ -26,10 +38,37 @@ async function registerServiceWorker() {
 
 // ─── Notification ───
 function checkNotificationPermission() {
+  // iOS standalone PWA check
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  if (isIOS && !isStandalone) {
+    showAddToHomeScreenBanner();
+    return;
+  }
+
   if (!('Notification' in window)) return;
   if (Notification.permission === 'default') {
     showNotifyBanner();
   }
+}
+
+function showAddToHomeScreenBanner() {
+  const existing = document.querySelector('.a2hs-banner');
+  if (existing) return;
+
+  const banner = document.createElement('div');
+  banner.className = 'a2hs-banner';
+  banner.innerHTML = `
+    <div class="a2hs-content">
+      <p><strong>加入主畫面才能收到通知</strong></p>
+      <p class="a2hs-steps">
+        點底部 <span class="a2hs-icon">⬆️</span> 分享按鈕 → 「加入主畫面」
+      </p>
+    </div>
+    <button class="btn-dismiss" onclick="this.parentElement.remove()">&times;</button>
+  `;
+  document.getElementById('add-section').after(banner);
 }
 
 function showNotifyBanner() {
@@ -55,10 +94,11 @@ async function requestNotification(btn) {
 
 function sendNotification(timer) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const info = MUSHROOM_TYPES[timer.type] || MUSHROOM_TYPES.normal;
   const title = '🍄 菇長回來了！';
   const body = timer.name
-    ? `${timer.name} 的${timer.type === 'large' ? '大菇' : '普通菇'}已重生`
-    : `${timer.type === 'large' ? '大菇' : '普通菇'}已重生，快去打！`;
+    ? `${timer.name} 的${info.name}已重生`
+    : `${info.name}已重生，快去打！`;
 
   if (navigator.serviceWorker && navigator.serviceWorker.controller) {
     navigator.serviceWorker.ready.then(reg => {
@@ -85,13 +125,23 @@ function startTick() {
     timers.forEach(t => {
       if (!t.ready && now >= t.endTime) {
         t.ready = true;
+        t.readyAt = now;
         changed = true;
         sendNotification(t);
       }
     });
 
-    if (changed) saveTimers();
-    updateTimerDisplays();
+    // Auto-remove expired timers older than 10 minutes
+    const before = timers.length;
+    timers = timers.filter(t => !t.ready || (now - (t.readyAt || t.endTime)) < EXPIRED_AUTO_REMOVE_MS);
+    if (timers.length !== before) changed = true;
+
+    if (changed) {
+      saveTimers();
+      renderTimers();
+    } else {
+      updateTimerDisplays();
+    }
   }, 1000);
 }
 
@@ -127,13 +177,37 @@ function updateTimerDisplays() {
 }
 
 // ─── Timer CRUD ───
+function createTimer(type, name, totalSeconds) {
+  const now = Date.now();
+  return {
+    id: now.toString(36) + Math.random().toString(36).slice(2, 6),
+    type,
+    name,
+    totalSeconds,
+    startTime: now,
+    endTime: now + totalSeconds * 1000,
+    ready: false,
+  };
+}
+
+function insertTimer(type, name, totalSeconds) {
+  evictExpiredIfFull();
+  if (getActiveTimerCount() >= MAX_TIMERS) {
+    alert(`最多同時 ${MAX_TIMERS} 個計時器！`);
+    return false;
+  }
+  timers.unshift(createTimer(type, name, totalSeconds));
+  saveTimers();
+  renderTimers();
+  return true;
+}
+
 function addTimer() {
   const nameInput = document.getElementById('input-name');
   const name = nameInput.value.trim();
 
   let totalSeconds;
   if (selectedMinutes === 0) {
-    // Custom time: minutes + seconds
     const mins = parseInt(document.getElementById('input-custom-minutes').value, 10) || 0;
     const secs = parseInt(document.getElementById('input-custom-seconds').value, 10) || 0;
     totalSeconds = mins * 60 + secs;
@@ -146,24 +220,30 @@ function addTimer() {
     totalSeconds = selectedMinutes * 60;
   }
 
-  const now = Date.now();
-  const timer = {
-    id: now.toString(36) + Math.random().toString(36).slice(2, 6),
-    type: selectedType,
-    name: name || '',
-    totalSeconds,
-    startTime: now,
-    endTime: now + totalSeconds * 1000,
-    ready: false,
-  };
+  if (insertTimer(selectedType, name || '', totalSeconds)) {
+    closeAddModal();
+    nameInput.value = '';
+  }
+}
 
-  timers.unshift(timer);
-  saveTimers();
-  renderTimers();
-  closeAddModal();
+function getActiveTimerCount() {
+  return timers.filter(t => !t.ready).length;
+}
 
-  // Reset form
-  nameInput.value = '';
+function evictExpiredIfFull() {
+  if (timers.length < MAX_TIMERS) return;
+  let oldestIdx = -1;
+  let oldestTime = Infinity;
+  timers.forEach((t, i) => {
+    if (t.ready && (t.readyAt || t.endTime) < oldestTime) {
+      oldestTime = t.readyAt || t.endTime;
+      oldestIdx = i;
+    }
+  });
+  if (oldestIdx !== -1) {
+    timers.splice(oldestIdx, 1);
+    saveTimers();
+  }
 }
 
 function deleteTimer(id) {
@@ -207,8 +287,9 @@ function renderTimers() {
     card.id = `timer-${t.id}`;
     card.className = `timer-card${t.ready ? ' ready' : ''}`;
 
-    const icon = t.type === 'large' ? '🟣' : '🍄';
-    const typeName = t.type === 'large' ? '大菇' : '普通菇';
+    const info = MUSHROOM_TYPES[t.type] || MUSHROOM_TYPES.normal;
+    const icon = info.icon;
+    const typeName = info.name;
     const displayName = t.name || typeName;
     const endTimeStr = new Date(t.endTime).toLocaleTimeString('zh-Hant', {
       hour: '2-digit',
@@ -229,13 +310,12 @@ function renderTimers() {
     card.innerHTML = `
       <div class="timer-card-header">
         <div class="timer-info">
-          <span class="timer-icon">${icon}</span>
+          <span class="timer-icon" style="font-size:${info.iconSize}">${icon}</span>
           <div class="timer-meta">
             <h3>${escapeHtml(displayName)}</h3>
             <span class="timer-type">${typeName} · ${durationStr}</span>
           </div>
         </div>
-        <button class="btn-delete" onclick="deleteTimer('${t.id}')" title="刪除">&times;</button>
       </div>
       <div class="timer-countdown">
         <div class="countdown-time ${t.ready ? 'ready' : 'counting'}">
@@ -247,7 +327,10 @@ function renderTimers() {
       </div>
       <div class="timer-footer">
         <span class="footer-end-time">預計 ${endTimeStr} 重生</span>
-        <button class="btn-restart" onclick="restartTimer('${t.id}')">🔄 重新計時</button>
+        <div class="timer-footer-actions">
+          <button class="btn-restart" onclick="restartTimer('${t.id}')">🔄 重新計時</button>
+          <button class="btn-remove" onclick="deleteTimer('${t.id}')">🗑 移除</button>
+        </div>
       </div>
     `;
 
@@ -263,6 +346,19 @@ function toggleEmptyState() {
     empty.classList.remove('hidden');
   } else {
     empty.classList.add('hidden');
+  }
+  updateTimerCountBadge();
+}
+
+function updateTimerCountBadge() {
+  const badge = document.getElementById('timer-count-badge');
+  if (!badge) return;
+  const active = getActiveTimerCount();
+  if (timers.length === 0) {
+    badge.textContent = '';
+  } else {
+    badge.textContent = `${active}/${MAX_TIMERS}`;
+    badge.className = `timer-count-badge${active >= MAX_TIMERS ? ' full' : ''}`;
   }
 }
 
@@ -319,10 +415,7 @@ function resetOcrModal() {
     </div>
   `;
   document.getElementById('ocr-status').classList.add('hidden');
-  document.getElementById('ocr-result').classList.add('hidden');
-  document.getElementById('ocr-confirm-btn').disabled = true;
   document.getElementById('ocr-file-input').value = '';
-  document.getElementById('ocr-name').value = '';
 }
 
 // ─── OCR: File / Paste Handling ───
@@ -386,13 +479,12 @@ async function processOcrImage(file) {
   progressFill.style.width = '10%';
 
   try {
-    // Pre-process image: crop center area, grayscale, high contrast
     const processedBlob = await preprocessImage(file);
 
-    statusText.textContent = '正在辨識文字...';
+    statusText.textContent = '正在辨識文字（中文+英文）...';
     progressFill.style.width = '30%';
 
-    const worker = await Tesseract.createWorker('eng', 1, {
+    const worker = await Tesseract.createWorker('chi_tra+eng', 1, {
       logger: (m) => {
         if (m.status === 'recognizing text') {
           const pct = 30 + Math.round(m.progress * 60);
@@ -407,9 +499,10 @@ async function processOcrImage(file) {
     progressFill.style.width = '100%';
     statusText.textContent = '辨識完成！';
 
-    // Extract time from OCR text
-    const extracted = extractTimeFromText(text);
-    showOcrResult(extracted, text);
+    console.log('OCR raw text:', text);
+
+    const extracted = extractAllFromText(text);
+    autoAddTimerFromOcr(extracted);
 
   } catch (err) {
     statusText.textContent = '辨識失敗：' + err.message;
@@ -452,112 +545,81 @@ async function preprocessImage(file) {
   });
 }
 
-// ─── OCR: Time Extraction ───
-function extractTimeFromText(text) {
-  // Clean up OCR text
-  const cleaned = text.replace(/[^\d:：.]/g, (c) => {
-    // Keep digits, colons, periods, spaces, newlines
-    if (c === ' ' || c === '\n') return c;
-    return '';
-  });
+// ─── OCR: Full Extraction (time + type + location) ───
+function extractAllFromText(text) {
+  const result = {
+    time: null,
+    mushroomType: null,
+    location: null,
+  };
 
-  // Try multiple patterns for time formats
-  // Format: HH:MM:SS, H:MM:SS, MM:SS, M:SS
-  const patterns = [
-    /(\d{1,2})\s*[:：.]\s*(\d{1,2})\s*[:：.]\s*(\d{1,2})/,  // H:MM:SS
-    /(\d{1,2})\s*[:：.]\s*(\d{1,2})/,                          // MM:SS or M:SS
-  ];
+  // --- Extract mushroom type ---
+  if (/巨大/.test(text)) {
+    result.mushroomType = 'large';
+  } else if (/小/.test(text) && /蘑菇|毒/.test(text)) {
+    result.mushroomType = 'small';
+  } else if (/一般/.test(text)) {
+    result.mushroomType = 'normal';
+  }
 
-  // Search in original text too (OCR might preserve formatting better)
-  const searchText = text + '\n' + cleaned;
+  // --- Extract time: "剩下X分Y秒" or "剩下X分 Y秒" ---
+  const zhTimeMatch = text.match(/剩[下了]\s*(\d{1,3})\s*分\s*(\d{1,2})\s*秒/);
+  if (zhTimeMatch) {
+    result.time = {
+      hours: 0,
+      minutes: parseInt(zhTimeMatch[1], 10),
+      seconds: parseInt(zhTimeMatch[2], 10),
+    };
+  }
 
-  for (const pattern of patterns) {
-    const match = searchText.match(pattern);
-    if (match) {
-      if (match[3] !== undefined) {
-        // H:MM:SS format
-        return {
-          hours: parseInt(match[1], 10),
-          minutes: parseInt(match[2], 10),
-          seconds: parseInt(match[3], 10),
-        };
-      } else {
-        // MM:SS format
-        const first = parseInt(match[1], 10);
-        const second = parseInt(match[2], 10);
-        // If first number > 59, treat as MM:SS where MM is large
-        return {
-          hours: 0,
-          minutes: first,
-          seconds: second,
-        };
+  // Fallback: HH:MM:SS or MM:SS format
+  if (!result.time) {
+    const colonPatterns = [
+      /(\d{1,2})\s*[:：]\s*(\d{1,2})\s*[:：]\s*(\d{1,2})/,
+      /(\d{1,2})\s*[:：]\s*(\d{1,2})/,
+    ];
+    for (const pattern of colonPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        if (match[3] !== undefined) {
+          result.time = {
+            hours: parseInt(match[1], 10),
+            minutes: parseInt(match[2], 10),
+            seconds: parseInt(match[3], 10),
+          };
+        } else {
+          result.time = {
+            hours: 0,
+            minutes: parseInt(match[1], 10),
+            seconds: parseInt(match[2], 10),
+          };
+        }
+        break;
       }
     }
   }
 
-  // Try just finding standalone numbers (might be minutes)
-  const numMatch = text.match(/(\d{1,3})/);
-  if (numMatch) {
-    return { hours: 0, minutes: parseInt(numMatch[1], 10), seconds: 0 };
+  // --- Extract location: first line, first 4 chars ---
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length >= 2);
+  if (lines.length > 0) {
+    result.location = lines[0].substring(0, 4);
   }
 
-  return null;
+  return result;
 }
 
-function showOcrResult(extracted, rawText) {
-  const resultEl = document.getElementById('ocr-result');
-  const minsInput = document.getElementById('ocr-minutes');
-  const secsInput = document.getElementById('ocr-seconds');
-  const confirmBtn = document.getElementById('ocr-confirm-btn');
+function autoAddTimerFromOcr(extracted) {
+  const name = `菇${timers.length + 1}`;
+  const type = extracted.mushroomType || 'normal';
 
-  resultEl.classList.remove('hidden');
-
-  if (extracted) {
-    const totalMins = (extracted.hours || 0) * 60 + (extracted.minutes || 0);
-    minsInput.value = totalMins;
-    secsInput.value = extracted.seconds || 0;
-    confirmBtn.disabled = false;
-
-    document.getElementById('ocr-status-text').textContent =
-      `辨識到時間：${totalMins} 分 ${extracted.seconds || 0} 秒`;
-  } else {
-    minsInput.value = '';
-    secsInput.value = '';
-    confirmBtn.disabled = false; // Let user manually input
-    document.getElementById('ocr-status-text').textContent =
-      '未辨識到時間格式，請手動輸入';
+  let totalSeconds = RESPAWN_SECONDS - MANUAL_BUFFER_SECONDS;
+  if (extracted.time) {
+    const rawTotal = ((extracted.time.hours || 0) * 60 + (extracted.time.minutes || 0)) * 60 + (extracted.time.seconds || 0);
+    totalSeconds = rawTotal + RESPAWN_SECONDS - MANUAL_BUFFER_SECONDS;
   }
+  if (totalSeconds < 1) totalSeconds = RESPAWN_SECONDS;
 
-  // Allow manual editing to enable confirm
-  minsInput.addEventListener('input', () => { confirmBtn.disabled = false; });
-  secsInput.addEventListener('input', () => { confirmBtn.disabled = false; });
-}
-
-function addTimerFromOcr() {
-  const mins = parseInt(document.getElementById('ocr-minutes').value, 10) || 0;
-  const secs = parseInt(document.getElementById('ocr-seconds').value, 10) || 0;
-  const totalSeconds = mins * 60 + secs;
-  const name = document.getElementById('ocr-name').value.trim();
-
-  if (totalSeconds < 1) {
-    document.getElementById('ocr-minutes').style.borderColor = '#ef4444';
-    return;
-  }
-
-  const now = Date.now();
-  const timer = {
-    id: now.toString(36) + Math.random().toString(36).slice(2, 6),
-    type: 'normal',
-    name: name || '',
-    totalSeconds,
-    startTime: now,
-    endTime: now + totalSeconds * 1000,
-    ready: false,
-  };
-
-  timers.unshift(timer);
-  saveTimers();
-  renderTimers();
+  insertTimer(type, name, totalSeconds);
   closeOcrModal();
 }
 

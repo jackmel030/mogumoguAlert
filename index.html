@@ -17,7 +17,7 @@
   <div id="app">
     <header>
       <h1>🍄 菇菇計時器</h1>
-      <p class="subtitle">Pikmin Bloom 香菇重生提醒</p>
+      <p class="subtitle">Pikmin Bloom 香菇重生提醒 <span id="timer-count-badge" class="timer-count-badge"></span></p>
     </header>
 
     <div id="add-section">
@@ -41,17 +41,19 @@
         <h2>新增香菇計時器</h2>
 
         <div class="form-group">
-          <label>香菇類型</label>
-          <div class="mushroom-types">
-            <button class="type-btn selected" data-type="normal" data-color="#8B4513" onclick="selectType(this)">
-              <span class="type-icon">🍄</span>
-              <span>普通菇</span>
-              <span class="type-time">5 分鐘</span>
+          <label>蘑菇類型</label>
+          <div class="mushroom-types mushroom-types-3">
+            <button class="type-btn" data-type="small" onclick="selectType(this)">
+              <span class="type-icon" style="font-size:20px">🍄</span>
+              <span>小</span>
             </button>
-            <button class="type-btn" data-type="large" data-color="#6B2FA0" onclick="selectType(this)">
-              <span class="type-icon">🟣</span>
-              <span>大菇</span>
-              <span class="type-time">5 分鐘</span>
+            <button class="type-btn selected" data-type="normal" onclick="selectType(this)">
+              <span class="type-icon" style="font-size:28px">🍄</span>
+              <span>一般</span>
+            </button>
+            <button class="type-btn" data-type="large" onclick="selectType(this)">
+              <span class="type-icon" style="font-size:38px">🍄</span>
+              <span>巨大</span>
             </button>
           </div>
         </div>
@@ -108,26 +110,8 @@
           <p id="ocr-status-text">辨識中...</p>
         </div>
 
-        <div id="ocr-result" class="hidden">
-          <div class="form-group">
-            <label>辨識結果</label>
-            <div class="ocr-result-time">
-              <div class="custom-time-inputs">
-                <input type="number" id="ocr-minutes" placeholder="分" min="0" max="1440">
-                <span class="time-separator">:</span>
-                <input type="number" id="ocr-seconds" placeholder="秒" min="0" max="59">
-              </div>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>備註名稱（選填）</label>
-            <input type="text" id="ocr-name" placeholder="例：公司門口" maxlength="20">
-          </div>
-        </div>
-
         <div class="modal-actions">
           <button class="btn-cancel" onclick="closeOcrModal()">取消</button>
-          <button class="btn-confirm" id="ocr-confirm-btn" onclick="addTimerFromOcr()" disabled>開始計時</button>
         </div>
       </div>
     </div>

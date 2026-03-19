@@ -130,21 +130,6 @@ header .subtitle {
   margin-top: 2px;
 }
 
-.btn-delete {
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.btn-delete:active {
-  color: var(--danger);
-  background: rgba(239, 68, 68, 0.1);
-}
 
 .timer-countdown {
   text-align: center;
@@ -205,6 +190,28 @@ header .subtitle {
 
 .timer-card .btn-restart:active {
   background: rgba(74, 222, 128, 0.3);
+  transform: scale(0.96);
+}
+
+.timer-footer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-remove {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-remove:active {
+  background: rgba(239, 68, 68, 0.3);
   transform: scale(0.96);
 }
 
@@ -278,6 +285,10 @@ header .subtitle {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.mushroom-types-3 {
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
 .type-btn {
@@ -456,6 +467,43 @@ header .subtitle {
   font-size: 18px;
 }
 
+/* Add to Home Screen banner (iOS) */
+.a2hs-banner {
+  margin: 0 16px 12px;
+  padding: 14px 16px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.a2hs-content p {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.a2hs-content .a2hs-steps {
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.a2hs-icon {
+  font-size: 14px;
+}
+
+.a2hs-banner .btn-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  padding: 4px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
 /* OCR Button */
 .btn-ocr {
   width: 100%;
@@ -544,14 +592,25 @@ header .subtitle {
   text-align: center;
 }
 
-/* OCR Result */
-.ocr-result-time {
-  margin-bottom: 8px;
-}
-
 .btn-confirm:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Timer count badge */
+.timer-count-badge {
+  display: inline-block;
+  background: var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+
+.timer-count-badge.full {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger);
 }
 
 #add-section {
