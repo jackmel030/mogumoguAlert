@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="菇菇計時">
+  <meta name="theme-color" content="#2d5a1b">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>菇菇計時器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>🍄 菇菇計時器</h1>
+      <p class="subtitle">Pikmin Bloom 香菇重生提醒</p>
+    </header>
+
+    <div id="add-section">
+      <button id="btn-add" class="btn-primary" onclick="openAddModal()">+ 新增計時器</button>
+    </div>
+
+    <div id="timer-list">
+      <!-- timers rendered here -->
+    </div>
+
+    <div id="empty-state" class="hidden">
+      <div class="empty-icon">🍄</div>
+      <p>還沒有計時器</p>
+      <p class="hint">打完菇後點「+ 新增計時器」開始追蹤</p>
+    </div>
+
+    <!-- Add Timer Modal -->
+    <div id="modal-overlay" class="modal-overlay hidden" onclick="closeAddModal(event)">
+      <div class="modal" onclick="event.stopPropagation()">
+        <h2>新增香菇計時器</h2>
+
+        <div class="form-group">
+          <label>香菇類型</label>
+          <div class="mushroom-types">
+            <button class="type-btn selected" data-type="normal" data-color="#8B4513" onclick="selectType(this)">
+              <span class="type-icon">🍄</span>
+              <span>普通菇</span>
+              <span class="type-time">5 分鐘</span>
+            </button>
+            <button class="type-btn" data-type="large" data-color="#6B2FA0" onclick="selectType(this)">
+              <span class="type-icon">🟣</span>
+              <span>大菇</span>
+              <span class="type-time">5 分鐘</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>備註名稱（選填）</label>
+          <input type="text" id="input-name" placeholder="例：公司門口、捷運站旁" maxlength="20">
+        </div>
+
+        <div class="form-group">
+          <label>倒數時間</label>
+          <div class="time-options">
+            <button class="time-btn selected" data-minutes="5" onclick="selectTime(this)">5 分鐘</button>
+            <button class="time-btn" data-minutes="10" onclick="selectTime(this)">10 分鐘</button>
+            <button class="time-btn" data-minutes="15" onclick="selectTime(this)">15 分鐘</button>
+            <button class="time-btn" data-minutes="0" onclick="selectTime(this)">自訂</button>
+          </div>
+          <div id="custom-time" class="hidden">
+            <input type="number" id="input-custom-minutes" placeholder="分鐘" min="1" max="1440">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-cancel" onclick="closeAddModal()">取消</button>
+          <button class="btn-confirm" onclick="addTimer()">開始計時</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

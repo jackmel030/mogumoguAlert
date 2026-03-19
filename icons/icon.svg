@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#2d5a1b"/>
+  <ellipse cx="256" cy="230" rx="140" ry="100" fill="#c0392b"/>
+  <ellipse cx="210" cy="200" rx="25" ry="20" fill="#fff" opacity="0.6"/>
+  <ellipse cx="290" cy="180" rx="18" ry="14" fill="#fff" opacity="0.5"/>
+  <ellipse cx="260" cy="240" rx="15" ry="12" fill="#fff" opacity="0.4"/>
+  <rect x="240" y="310" width="32" height="80" rx="8" fill="#f0e6d2"/>
+  <text x="256" y="450" text-anchor="middle" font-size="48" font-weight="bold" fill="#4ade80" font-family="sans-serif">TIMER</text>
+</svg>
