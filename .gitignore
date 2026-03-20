@@ -3,3 +3,12 @@ docs/
 
 # Claude Code 設定
 .claude/
+
+# Dependencies
+node_modules/
+
+# Build 產出（Capacitor 用）
+dist/
+
+# Capacitor iOS 專案（自動生成，不追蹤）
+ios/

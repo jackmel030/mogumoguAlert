@@ -1,14 +1,40 @@
 // ─── Constants ───
 const MAX_TIMERS = 10;
 const RESPAWN_SECONDS = 300; // 5 minutes
-const MANUAL_BUFFER_SECONDS = 30; // human reaction buffer
+const MANUAL_BUFFER_SECONDS = 15; // human reaction buffer
 const EXPIRED_AUTO_REMOVE_MS = 10 * 60 * 1000; // 10 minutes
 
-const MUSHROOM_TYPES = {
-  small:  { icon: '🍄', iconSize: '20px', name: '小毒蘑菇', color: '#a0522d' },
-  normal: { icon: '🍄', iconSize: '28px', name: '一般毒蘑菇', color: '#8B4513' },
-  large:  { icon: '🍄', iconSize: '38px', name: '巨大毒蘑菇', color: '#6B2FA0' },
+// 蘑菇大小（基礎類型）
+const MUSHROOM_SIZES = {
+  small:  { iconSize: '20px', sizeKey: 'size.small' },
+  normal: { iconSize: '28px', sizeKey: 'size.normal' },
+  large:  { iconSize: '38px', sizeKey: 'size.large' },
+  huge:   { iconSize: '44px', sizeKey: 'size.huge' },
 };
+
+// 蘑菇顏色（OCR 偵測）
+const MUSHROOM_COLOR_INFO = {
+  'purple':   { icon: '🟣', nameKey: 'color.purple' },
+  'yellow':   { icon: '⚡', nameKey: 'color.yellow' },
+  'ice-blue': { icon: '🧊', nameKey: 'color.ice-blue' },
+  'blue':     { icon: '🔵', nameKey: 'color.blue' },
+  'green':    { icon: '🟢', nameKey: 'color.green' },
+  'red':      { icon: '🔴', nameKey: 'color.red' },
+  'pink':     { icon: '🩷', nameKey: 'color.pink' },
+  'gray':     { icon: '⚪', nameKey: 'color.gray' },
+};
+
+// 組合蘑菇資訊（大小 + 顏色）
+function getMushroomInfo(type, colorKey) {
+  const size = MUSHROOM_SIZES[type] || MUSHROOM_SIZES.normal;
+  const sizeLabel = i18n.t(size.sizeKey);
+  const color = MUSHROOM_COLOR_INFO[colorKey];
+  if (color) {
+    return { icon: color.icon, iconSize: size.iconSize, name: `${sizeLabel} ${i18n.t(color.nameKey)}` };
+  }
+  return { icon: '🍄', iconSize: size.iconSize, name: `${sizeLabel} ${i18n.t('mushroom.default')}` };
+}
+
 
 // ─── State ───
 let timers = loadTimers();
@@ -29,14 +55,67 @@ let selectedType = 'normal';
 let selectedMinutes = 5;
 let tickInterval = null;
 
+// ─── Theme ───
+function initTheme() {
+  const saved = localStorage.getItem('pikmin-theme');
+  if (saved) {
+    setTheme(saved);
+  } else {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setTheme(prefersDark ? 'dark' : 'light');
+  }
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('pikmin-theme')) {
+      setTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+}
+
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '☀️' : '🌙';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = theme === 'light' ? '#4caf50' : '#2d5a1b';
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  setTheme(next);
+  localStorage.setItem('pikmin-theme', next);
+}
+
 // ─── Init ───
 document.addEventListener('DOMContentLoaded', () => {
+  i18n.init();
+  initLangSelect();
+  initTheme();
   renderTimers();
   startTick();
   checkNotificationPermission();
   registerServiceWorker();
   setupPasteListener();
+  initTimeButtons();
+
+  // 語言切換時重新渲染動態內容
+  document.addEventListener('langchange', () => {
+    renderTimers();
+    initTimeButtons();
+  });
 });
+
+function initLangSelect() {
+  const sel = document.getElementById('lang-select');
+  if (sel) sel.value = i18n.getLang();
+}
+
+function initTimeButtons() {
+  document.querySelectorAll('.time-btn[data-minutes]:not([data-minutes="0"])').forEach(btn => {
+    const n = btn.getAttribute('data-minutes');
+    btn.textContent = i18n.t('modal.minutes', { n });
+  });
+}
 
 // ─── Service Worker ───
 async function registerServiceWorker() {
@@ -74,9 +153,9 @@ function showAddToHomeScreenBanner() {
   banner.className = 'a2hs-banner';
   banner.innerHTML = `
     <div class="a2hs-content">
-      <p><strong>加入主畫面才能收到通知</strong></p>
+      <p><strong>${escapeHtml(i18n.t('notify.a2hs.title'))}</strong></p>
       <p class="a2hs-steps">
-        點底部 <span class="a2hs-icon">⬆️</span> 分享按鈕 → 「加入主畫面」
+        ${i18n.t('notify.a2hs.steps')}
       </p>
     </div>
     <button class="btn-dismiss" onclick="this.parentElement.remove()">&times;</button>
@@ -91,8 +170,8 @@ function showNotifyBanner() {
   const banner = document.createElement('div');
   banner.className = 'notify-banner';
   banner.innerHTML = `
-    <p>開啟通知，菇長回來時提醒你</p>
-    <button onclick="requestNotification(this)">開啟通知</button>
+    <p>${escapeHtml(i18n.t('notify.banner'))}</p>
+    <button onclick="requestNotification(this)">${escapeHtml(i18n.t('notify.enable'))}</button>
     <button class="btn-dismiss" onclick="this.parentElement.remove()">&times;</button>
   `;
   document.getElementById('add-section').after(banner);
@@ -107,11 +186,11 @@ async function requestNotification(btn) {
 
 function sendNotification(timer) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  const info = MUSHROOM_TYPES[timer.type] || MUSHROOM_TYPES.normal;
-  const title = '🍄 菇長回來了！';
+  const info = getMushroomInfo(timer.type, timer.colorKey);
+  const title = '🍄 ' + i18n.t('notify.title');
   const body = timer.name
-    ? `${timer.name} 的${info.name}已重生`
-    : `${info.name}已重生，快去打！`;
+    ? i18n.t('notify.bodyNamed', { name: timer.name, mushroom: info.name })
+    : i18n.t('notify.bodyDefault', { mushroom: info.name });
 
   if (navigator.serviceWorker && navigator.serviceWorker.controller) {
     navigator.serviceWorker.ready.then(reg => {
@@ -161,6 +240,7 @@ function startTick() {
 function updateTimerDisplays() {
   const now = Date.now();
   timers.forEach(t => {
+    if (t.id === editingTimerId) return; // 編輯中不更新
     const el = document.getElementById(`timer-${t.id}`);
     if (!el) return;
 
@@ -168,7 +248,7 @@ function updateTimerDisplays() {
     const progressBar = el.querySelector('.timer-progress-bar');
 
     if (t.ready) {
-      countdownEl.textContent = '可以打了！';
+      countdownEl.textContent = i18n.t('timer.ready');
       countdownEl.className = 'countdown-time ready';
       if (progressBar) progressBar.style.width = '100%';
       el.classList.add('ready');
@@ -190,12 +270,13 @@ function updateTimerDisplays() {
 }
 
 // ─── Timer CRUD ───
-function createTimer(type, name, totalSeconds) {
+function createTimer(type, name, totalSeconds, colorKey) {
   const now = Date.now();
   return {
     id: now.toString(36) + Math.random().toString(36).slice(2, 6),
     type,
     name,
+    colorKey: colorKey || null,
     totalSeconds,
     startTime: now,
     endTime: now + totalSeconds * 1000,
@@ -203,13 +284,13 @@ function createTimer(type, name, totalSeconds) {
   };
 }
 
-function insertTimer(type, name, totalSeconds) {
+function insertTimer(type, name, totalSeconds, colorKey) {
   evictExpiredIfFull();
   if (getActiveTimerCount() >= MAX_TIMERS) {
-    alert(`最多同時 ${MAX_TIMERS} 個計時器！`);
+    alert(i18n.t('timer.maxReached', { n: MAX_TIMERS }));
     return false;
   }
-  timers.unshift(createTimer(type, name, totalSeconds));
+  timers.unshift(createTimer(type, name, totalSeconds, colorKey));
   saveTimers();
   renderTimers();
   return true;
@@ -298,13 +379,15 @@ function renderTimers() {
   sorted.forEach(t => {
     const card = document.createElement('div');
     card.id = `timer-${t.id}`;
+    card.dataset.id = t.id;
     card.className = `timer-card${t.ready ? ' ready' : ''}`;
 
-    const info = MUSHROOM_TYPES[t.type] || MUSHROOM_TYPES.normal;
+    const info = getMushroomInfo(t.type, t.colorKey);
     const icon = info.icon;
     const typeName = info.name;
     const displayName = t.name || typeName;
-    const endTimeStr = new Date(t.endTime).toLocaleTimeString('zh-Hant', {
+    const timeLang = i18n.getLang() === 'en' ? 'en-US' : 'zh-Hant';
+    const endTimeStr = new Date(t.endTime).toLocaleTimeString(timeLang, {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
@@ -325,24 +408,24 @@ function renderTimers() {
         <div class="timer-info">
           <span class="timer-icon" style="font-size:${info.iconSize}">${icon}</span>
           <div class="timer-meta">
-            <h3>${escapeHtml(displayName)}</h3>
+            <h3 class="timer-name" onclick="startEditName('${t.id}')" title="${escapeHtml(i18n.t('timer.editName'))}">${escapeHtml(displayName)} <svg class="edit-icon" viewBox="0 0 512 512" width="11" height="11"><path fill="currentColor" d="M362.7 19.3L314.3 67.7 444.3 197.7l48.4-48.4c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zM291.7 90.3l-261 261c-5 5-8.5 11.3-10.2 18.1L.5 478.2c-2.5 10.4 7 19.9 17.4 17.4l108.8-20c6.8-1.7 13.1-5.2 18.1-10.2l261-261L275.7 74.3z"/></svg></h3>
             <span class="timer-type">${typeName} · ${durationStr}</span>
           </div>
         </div>
       </div>
-      <div class="timer-countdown">
+      <div class="timer-countdown" onclick="openTimeEditor('${t.id}')">
         <div class="countdown-time ${t.ready ? 'ready' : 'counting'}">
-          ${t.ready ? '可以打了！' : formatTime(remaining)}
+          ${t.ready ? i18n.t('timer.ready') : formatTime(remaining)}
         </div>
       </div>
       <div class="timer-progress">
         <div class="timer-progress-bar" style="width: ${pct}%"></div>
       </div>
       <div class="timer-footer">
-        <span class="footer-end-time">預計 ${endTimeStr} 重生</span>
+        <span class="footer-end-time">${escapeHtml(i18n.t('timer.respawnAt', { time: endTimeStr }))}</span>
         <div class="timer-footer-actions">
-          <button class="btn-restart" onclick="restartTimer('${t.id}')">🔄 重新計時</button>
-          <button class="btn-remove" onclick="deleteTimer('${t.id}')">🗑 移除</button>
+          <button class="btn-restart" onclick="openTimeEditor('${t.id}')">⏱ ${escapeHtml(i18n.t('timer.adjust'))}</button>
+          <button class="btn-remove" onclick="deleteTimer('${t.id}')">🗑 ${escapeHtml(i18n.t('timer.remove'))}</button>
         </div>
       </div>
     `;
@@ -407,24 +490,25 @@ function selectTime(btn) {
   }
 }
 
-// ─── OCR Modal ───
-function openOcrModal() {
-  const overlay = document.getElementById('ocr-overlay');
-  overlay.classList.remove('hidden');
-  resetOcrModal();
+// ─── OCR Section ───
+function toggleOcrSection() {
+  const body = document.getElementById('ocr-section-body');
+  const icon = document.getElementById('ocr-toggle-icon');
+  body.classList.toggle('collapsed');
+  icon.classList.toggle('collapsed');
 }
 
-function closeOcrModal(e) {
-  if (e && e.target !== e.currentTarget) return;
-  document.getElementById('ocr-overlay').classList.add('hidden');
-}
-
-function resetOcrModal() {
+function resetOcrSection() {
+  // 清理預覽圖的 blob URL
+  const previewImg = document.querySelector('#ocr-preview-area img');
+  if (previewImg && previewImg.src.startsWith('blob:')) {
+    URL.revokeObjectURL(previewImg.src);
+  }
   document.getElementById('ocr-preview-area').innerHTML = `
     <div class="upload-placeholder">
-      <span style="font-size:36px">📸</span>
-      <p>點擊上傳或貼上截圖</p>
-      <p class="hint">支援直接 Ctrl+V / Cmd+V 貼上</p>
+      <span style="font-size:28px">📸</span>
+      <p>${escapeHtml(i18n.t('ocr.upload'))}</p>
+      <p class="hint">${escapeHtml(i18n.t('ocr.hint'))}</p>
     </div>
   `;
   document.getElementById('ocr-status').classList.add('hidden');
@@ -488,167 +572,229 @@ async function processOcrImage(file) {
   const statusText = document.getElementById('ocr-status-text');
   const progressFill = document.getElementById('ocr-progress-fill');
   statusEl.classList.remove('hidden');
-  statusText.textContent = '正在載入 OCR 引擎...';
-  progressFill.style.width = '10%';
 
   try {
-    const processedBlob = await preprocessImage(file);
-
-    statusText.textContent = '正在辨識文字（中文+英文）...';
-    progressFill.style.width = '30%';
-
-    const worker = await Tesseract.createWorker('chi_tra+eng', 1, {
-      logger: (m) => {
-        if (m.status === 'recognizing text') {
-          const pct = 30 + Math.round(m.progress * 60);
-          progressFill.style.width = pct + '%';
-        }
-      },
+    const result = await mushroomOCR(file, (msg, pct) => {
+      statusText.textContent = msg;
+      progressFill.style.width = pct + '%';
     });
 
-    const { data: { text } } = await worker.recognize(processedBlob);
-    await worker.terminate();
+    // 轉換為 autoAddTimerFromOcr 需要的格式
+    const extracted = {
+      time: result.time,
+      mushroomType: result.mushroomSize || 'normal',
+      mushroomColor: result.mushroomColor || null,
+      location: result.location,
+      analysisElapsed: result.analysisElapsed,
+    };
 
-    progressFill.style.width = '100%';
-    statusText.textContent = '辨識完成！';
-
-    console.log('OCR raw text:', text);
-
-    const extracted = extractAllFromText(text);
     autoAddTimerFromOcr(extracted);
 
   } catch (err) {
-    statusText.textContent = '辨識失敗：' + err.message;
+    statusText.textContent = i18n.t('ocr.failed') + err.message;
     progressFill.style.width = '0%';
     console.error('OCR error:', err);
   }
 }
 
-// ─── OCR: Image Preprocessing ───
-async function preprocessImage(file) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
 
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
+function autoAddTimerFromOcr(extracted) {
+  // 檢查時間是否有效（0h0m0s = 解析失敗）
+  if (!extracted.time ||
+      (extracted.time.hours === 0 && extracted.time.minutes === 0 && extracted.time.seconds === 0)) {
+    const statusEl = document.getElementById('ocr-status');
+    if (statusEl) {
+      document.getElementById('ocr-status-text').textContent = '⚠️ ' + i18n.t('ocr.timeFailed');
+    }
+    console.warn('[timer] OCR 時間解析失敗: 0h0m0s，不自動新增');
+    return;
+  }
 
-      // Convert to grayscale + increase contrast
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        // Grayscale
-        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        // Increase contrast
-        const contrast = 1.5;
-        const adjusted = ((gray / 255 - 0.5) * contrast + 0.5) * 255;
-        const val = Math.max(0, Math.min(255, adjusted));
-        data[i] = val;
-        data[i + 1] = val;
-        data[i + 2] = val;
+  const name = extracted.location || i18n.t('timer.defaultName', { n: timers.length + 1 });
+  const type = extracted.mushroomType || 'normal';
+  const colorKey = extracted.mushroomColor || null;
+  const analysisElapsed = extracted.analysisElapsed || 0;
+
+  const rawTotal = ((extracted.time.hours || 0) * 60 + (extracted.time.minutes || 0)) * 60 + (extracted.time.seconds || 0);
+  let totalSeconds = rawTotal - analysisElapsed + RESPAWN_SECONDS - MANUAL_BUFFER_SECONDS;
+  if (totalSeconds < 1) totalSeconds = RESPAWN_SECONDS;
+
+  console.log(`[timer] OCR: ${extracted.time.hours}h${extracted.time.minutes}m${extracted.time.seconds}s - 分析耗時${analysisElapsed}s + 重生${RESPAWN_SECONDS}s - 預留${MANUAL_BUFFER_SECONDS}s = ${totalSeconds}s`);
+
+  insertTimer(type, name, totalSeconds, colorKey);
+  resetOcrSection();
+}
+
+// 點擊計時器名稱 → 變成 input 編輯
+function startEditName(id) {
+  const timer = timers.find(t => t.id === id);
+  if (!timer) return;
+  const nameEl = document.querySelector(`.timer-card[data-id="${id}"] .timer-name`);
+  if (!nameEl || nameEl.querySelector('input')) return; // 已在編輯中
+
+  const current = timer.name;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = current;
+  input.className = 'edit-name-input';
+
+  const save = () => {
+    const newName = input.value.trim() || current;
+    timer.name = newName;
+    saveTimers();
+    renderTimers();
+  };
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); save(); }
+    if (e.key === 'Escape') { renderTimers(); }
+  });
+
+  nameEl.textContent = '';
+  nameEl.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+// ─── Time Editor (滾輪調整) ───
+let editingTimerId = null;
+
+function openTimeEditor(id) {
+  if (editingTimerId === id) return; // 已經在編輯
+  closeTimeEditor(); // 關閉其他編輯中的
+
+  const timer = timers.find(t => t.id === id);
+  if (!timer) return;
+  editingTimerId = id;
+
+  const el = document.getElementById(`timer-${id}`);
+  const countdownDiv = el.querySelector('.timer-countdown');
+
+  // 計算目前剩餘時間
+  const now = Date.now();
+  const remainMs = Math.max(0, timer.endTime - now);
+  const totalSec = Math.floor(remainMs / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+
+  countdownDiv.onclick = null; // 暫時移除點擊
+  countdownDiv.innerHTML = `
+    <div class="time-editor" onclick="event.stopPropagation()">
+      <div class="time-wheel" data-field="hours" data-max="23" data-value="${h}">
+        <button class="wheel-btn wheel-up" ontouchstart="wheelStep(this,1,event)" onmousedown="wheelStep(this,1,event)">▲</button>
+        <div class="wheel-value">${String(h).padStart(2, '0')}</div>
+        <button class="wheel-btn wheel-down" ontouchstart="wheelStep(this,-1,event)" onmousedown="wheelStep(this,-1,event)">▼</button>
+      </div>
+      <span class="wheel-sep">:</span>
+      <div class="time-wheel" data-field="minutes" data-max="59" data-value="${m}">
+        <button class="wheel-btn wheel-up" ontouchstart="wheelStep(this,1,event)" onmousedown="wheelStep(this,1,event)">▲</button>
+        <div class="wheel-value">${String(m).padStart(2, '0')}</div>
+        <button class="wheel-btn wheel-down" ontouchstart="wheelStep(this,-1,event)" onmousedown="wheelStep(this,-1,event)">▼</button>
+      </div>
+      <span class="wheel-sep">:</span>
+      <div class="time-wheel" data-field="seconds" data-max="59" data-value="${s}">
+        <button class="wheel-btn wheel-up" ontouchstart="wheelStep(this,1,event)" onmousedown="wheelStep(this,1,event)">▲</button>
+        <div class="wheel-value">${String(s).padStart(2, '0')}</div>
+        <button class="wheel-btn wheel-down" ontouchstart="wheelStep(this,-1,event)" onmousedown="wheelStep(this,-1,event)">▼</button>
+      </div>
+      <div class="wheel-actions">
+        <button class="wheel-confirm" onclick="confirmTimeEdit()">✓</button>
+        <button class="wheel-cancel" onclick="closeTimeEditor()">✕</button>
+      </div>
+    </div>
+  `;
+
+  // 滑鼠滾輪支援
+  countdownDiv.querySelectorAll('.time-wheel').forEach(wheel => {
+    wheel.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const dir = e.deltaY < 0 ? 1 : -1;
+      adjustWheel(wheel, dir);
+    }, { passive: false });
+  });
+
+  // 觸控滑動支援
+  countdownDiv.querySelectorAll('.time-wheel').forEach(wheel => {
+    let startY = 0;
+    wheel.addEventListener('touchstart', (e) => {
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    wheel.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const dy = startY - e.touches[0].clientY;
+      if (Math.abs(dy) > 20) {
+        adjustWheel(wheel, dy > 0 ? 1 : -1);
+        startY = e.touches[0].clientY;
       }
-      ctx.putImageData(imageData, 0, 0);
-
-      canvas.toBlob(resolve, 'image/png');
-    };
-    img.src = URL.createObjectURL(file);
+    }, { passive: false });
   });
 }
 
-// ─── OCR: Full Extraction (time + type + location) ───
-function extractAllFromText(text) {
-  const result = {
-    time: null,
-    mushroomType: null,
-    location: null,
-  };
-
-  // --- Extract mushroom type ---
-  if (/巨大/.test(text)) {
-    result.mushroomType = 'large';
-  } else if (/小/.test(text) && /蘑菇|毒/.test(text)) {
-    result.mushroomType = 'small';
-  } else if (/一般/.test(text)) {
-    result.mushroomType = 'normal';
-  }
-
-  // --- Extract time: "剩下X分Y秒" or "剩下X分 Y秒" ---
-  const zhTimeMatch = text.match(/剩[下了]\s*(\d{1,3})\s*分\s*(\d{1,2})\s*秒/);
-  if (zhTimeMatch) {
-    result.time = {
-      hours: 0,
-      minutes: parseInt(zhTimeMatch[1], 10),
-      seconds: parseInt(zhTimeMatch[2], 10),
-    };
-  }
-
-  // Fallback: HH:MM:SS or MM:SS format
-  if (!result.time) {
-    const colonPatterns = [
-      /(\d{1,2})\s*[:：]\s*(\d{1,2})\s*[:：]\s*(\d{1,2})/,
-      /(\d{1,2})\s*[:：]\s*(\d{1,2})/,
-    ];
-    for (const pattern of colonPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        if (match[3] !== undefined) {
-          result.time = {
-            hours: parseInt(match[1], 10),
-            minutes: parseInt(match[2], 10),
-            seconds: parseInt(match[3], 10),
-          };
-        } else {
-          result.time = {
-            hours: 0,
-            minutes: parseInt(match[1], 10),
-            seconds: parseInt(match[2], 10),
-          };
-        }
-        break;
-      }
-    }
-  }
-
-  // --- Extract location: first line, first 4 chars ---
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length >= 2);
-  if (lines.length > 0) {
-    result.location = lines[0].substring(0, 4);
-  }
-
-  return result;
+function wheelStep(btn, dir, e) {
+  e.preventDefault();
+  const wheel = btn.closest('.time-wheel');
+  adjustWheel(wheel, dir);
 }
 
-function autoAddTimerFromOcr(extracted) {
-  const name = `菇${timers.length + 1}`;
-  const type = extracted.mushroomType || 'normal';
+function adjustWheel(wheel, dir) {
+  const max = parseInt(wheel.dataset.max);
+  let val = parseInt(wheel.dataset.value) + dir;
+  if (val < 0) val = max;
+  if (val > max) val = 0;
+  wheel.dataset.value = val;
+  wheel.querySelector('.wheel-value').textContent = String(val).padStart(2, '0');
+}
 
-  let totalSeconds = RESPAWN_SECONDS - MANUAL_BUFFER_SECONDS;
-  if (extracted.time) {
-    const rawTotal = ((extracted.time.hours || 0) * 60 + (extracted.time.minutes || 0)) * 60 + (extracted.time.seconds || 0);
-    totalSeconds = rawTotal + RESPAWN_SECONDS - MANUAL_BUFFER_SECONDS;
-  }
-  if (totalSeconds < 1) totalSeconds = RESPAWN_SECONDS;
+function confirmTimeEdit() {
+  if (!editingTimerId) return;
+  const timer = timers.find(t => t.id === editingTimerId);
+  if (!timer) { closeTimeEditor(); return; }
 
-  insertTimer(type, name, totalSeconds);
-  closeOcrModal();
+  const el = document.getElementById(`timer-${editingTimerId}`);
+  const wheels = el.querySelectorAll('.time-wheel');
+  const h = parseInt(wheels[0].dataset.value);
+  const m = parseInt(wheels[1].dataset.value);
+  const s = parseInt(wheels[2].dataset.value);
+
+  const newTotalSec = h * 3600 + m * 60 + s;
+  const now = Date.now();
+  timer.endTime = now + newTotalSec * 1000;
+  timer.totalSeconds = newTotalSec;
+  timer.ready = newTotalSec <= 0;
+
+  editingTimerId = null;
+  saveTimers();
+  renderTimers();
+}
+
+function closeTimeEditor() {
+  editingTimerId = null;
+  // 重新渲染恢復正常顯示
+  renderTimers();
 }
 
 // ─── Utils ───
 function formatTime(ms) {
   const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 function formatDuration(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
-  if (s === 0) return `${m} 分鐘`;
-  return `${m} 分 ${s} 秒`;
+  if (h > 0 && s === 0) return i18n.t('duration.hm', { h, m });
+  if (h > 0) return i18n.t('duration.hms', { h, m, s });
+  if (s === 0) return i18n.t('duration.m', { m });
+  return i18n.t('duration.ms', { m, s });
 }
 
 function escapeHtml(str) {

@@ -1,0 +1,34 @@
+{
+  "name": "pikmin-mushroom-timer",
+  "version": "1.0.0",
+  "description": "Pikmin Bloom 毒蘑菇重生計時器 PWA。打完蘑菇後截圖，自動辨識倒數時間並計算重生提醒。",
+  "main": "app.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "cap:sync": "npm run build && npx cap sync ios",
+    "cap:open": "npx cap open ios",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jackmel030/mogumoguAlert.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jackmel030/mogumoguAlert/issues"
+  },
+  "homepage": "https://github.com/jackmel030/mogumoguAlert#readme",
+  "dependencies": {
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

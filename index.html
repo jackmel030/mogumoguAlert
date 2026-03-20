@@ -7,116 +7,133 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="菇菇計時">
   <meta name="theme-color" content="#2d5a1b">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>菇菇計時器</title>
   <link rel="stylesheet" href="style.css">
+  <script>
+    // 防止 FOUC：在 CSS 載入後、body 渲染前立即套用主題
+    (function(){var t=localStorage.getItem('pikmin-theme');if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t)})();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
+  <script src="platform.js"></script>
+  <script src="i18n.js"></script>
   <div id="app">
     <header>
-      <h1>🍄 菇菇計時器</h1>
-      <p class="subtitle">Pikmin Bloom 香菇重生提醒 <span id="timer-count-badge" class="timer-count-badge"></span></p>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="width:36px"></div>
+        <div style="text-align:center;flex:1">
+          <h1 data-i18n="app.title">菇菇計時器</h1>
+          <p class="subtitle"><span data-i18n="app.subtitle">Pikmin Bloom 香菇重生提醒</span> <span id="timer-count-badge" class="timer-count-badge"></span></p>
+        </div>
+        <div class="header-actions">
+          <select id="lang-select" class="lang-select" onchange="i18n.setLang(this.value)">
+            <option value="zh-Hant">ZH</option>
+            <option value="en">EN</option>
+          </select>
+          <button id="theme-toggle" class="theme-toggle-btn" onclick="toggleTheme()" data-i18n-aria="theme.toggle" aria-label="切換主題">🌙</button>
+        </div>
+      </div>
     </header>
 
     <div id="add-section">
-      <button id="btn-add" class="btn-primary" onclick="openAddModal()">+ 新增計時器</button>
-      <button id="btn-ocr" class="btn-ocr" onclick="openOcrModal()">📷 截圖辨識</button>
+      <button id="btn-add" class="btn-primary" onclick="openAddModal()" data-i18n="btn.add">+ 新增計時器</button>
     </div>
 
-    <div id="timer-list">
-      <!-- timers rendered here -->
+    <div id="timer-scroll-area">
+      <div id="timer-list">
+        <!-- timers rendered here -->
+      </div>
+
+      <div id="empty-state" class="hidden">
+        <div class="empty-icon">🍄</div>
+        <p data-i18n="empty.title">還沒有計時器</p>
+        <p class="hint" data-i18n="empty.hint">打完菇後點「+ 新增計時器」開始追蹤</p>
+      </div>
     </div>
 
-    <div id="empty-state" class="hidden">
-      <div class="empty-icon">🍄</div>
-      <p>還沒有計時器</p>
-      <p class="hint">打完菇後點「+ 新增計時器」開始追蹤</p>
+    <!-- OCR 截圖辨識（固定底部，預設展開） -->
+    <div id="ocr-section">
+      <div class="ocr-section-header" onclick="toggleOcrSection()">
+        <span>📷 <span data-i18n="ocr.title">截圖辨識</span></span>
+        <span id="ocr-toggle-icon" class="ocr-toggle-icon">▼</span>
+      </div>
+      <div id="ocr-section-body">
+        <div class="ocr-upload-area" id="ocr-drop-zone" onclick="document.getElementById('ocr-file-input').click()">
+          <input type="file" id="ocr-file-input" accept="image/*" style="display:none" onchange="handleOcrFile(event)">
+          <div id="ocr-preview-area">
+            <div class="upload-placeholder">
+              <span style="font-size:28px">📸</span>
+              <p data-i18n="ocr.upload">點擊上傳或貼上截圖</p>
+              <p class="hint" data-i18n="ocr.hint">支援 Ctrl+V / Cmd+V 貼上</p>
+            </div>
+          </div>
+        </div>
+        <div id="ocr-status" class="hidden">
+          <div class="ocr-progress-bar"><div class="ocr-progress-fill" id="ocr-progress-fill"></div></div>
+          <p id="ocr-status-text" data-i18n="ocr.processing">辨識中...</p>
+        </div>
+      </div>
     </div>
 
     <!-- Add Timer Modal -->
     <div id="modal-overlay" class="modal-overlay hidden" onclick="closeAddModal(event)">
       <div class="modal" onclick="event.stopPropagation()">
-        <h2>新增香菇計時器</h2>
+        <h2 data-i18n="modal.title">新增香菇計時器</h2>
 
         <div class="form-group">
-          <label>蘑菇類型</label>
+          <label data-i18n="modal.type">蘑菇類型</label>
           <div class="mushroom-types mushroom-types-3">
             <button class="type-btn" data-type="small" onclick="selectType(this)">
               <span class="type-icon" style="font-size:20px">🍄</span>
-              <span>小</span>
+              <span data-i18n="size.small">小</span>
             </button>
             <button class="type-btn selected" data-type="normal" onclick="selectType(this)">
               <span class="type-icon" style="font-size:28px">🍄</span>
-              <span>一般</span>
+              <span data-i18n="size.normal">一般</span>
             </button>
             <button class="type-btn" data-type="large" onclick="selectType(this)">
               <span class="type-icon" style="font-size:38px">🍄</span>
-              <span>巨大</span>
+              <span data-i18n="size.large">大</span>
             </button>
           </div>
         </div>
 
         <div class="form-group">
-          <label>備註名稱（選填）</label>
-          <input type="text" id="input-name" placeholder="例：公司門口、捷運站旁" maxlength="20">
+          <label data-i18n="modal.name">備註名稱（選填）</label>
+          <input type="text" id="input-name" data-i18n-placeholder="modal.namePlaceholder" placeholder="例：公司門口、捷運站旁" maxlength="20">
         </div>
 
         <div class="form-group">
-          <label>倒數時間</label>
+          <label data-i18n="modal.time">倒數時間</label>
           <div class="time-options">
-            <button class="time-btn selected" data-minutes="5" onclick="selectTime(this)">5 分鐘</button>
-            <button class="time-btn" data-minutes="10" onclick="selectTime(this)">10 分鐘</button>
-            <button class="time-btn" data-minutes="15" onclick="selectTime(this)">15 分鐘</button>
-            <button class="time-btn" data-minutes="0" onclick="selectTime(this)">自訂</button>
+            <button class="time-btn selected" data-minutes="5" onclick="selectTime(this)">5 min</button>
+            <button class="time-btn" data-minutes="10" onclick="selectTime(this)">10 min</button>
+            <button class="time-btn" data-minutes="15" onclick="selectTime(this)">15 min</button>
+            <button class="time-btn" data-minutes="0" onclick="selectTime(this)" data-i18n="modal.custom">自訂</button>
           </div>
           <div id="custom-time" class="hidden">
             <div class="custom-time-inputs">
-              <input type="number" id="input-custom-minutes" placeholder="分" min="0" max="1440">
+              <input type="number" id="input-custom-minutes" data-i18n-placeholder="modal.minutePlaceholder" placeholder="分" min="0" max="1440">
               <span class="time-separator">:</span>
-              <input type="number" id="input-custom-seconds" placeholder="秒" min="0" max="59">
+              <input type="number" id="input-custom-seconds" data-i18n-placeholder="modal.secondPlaceholder" placeholder="秒" min="0" max="59">
             </div>
           </div>
         </div>
 
         <div class="modal-actions">
-          <button class="btn-cancel" onclick="closeAddModal()">取消</button>
-          <button class="btn-confirm" onclick="addTimer()">開始計時</button>
-        </div>
-      </div>
-    </div>
-    <!-- OCR Modal -->
-    <div id="ocr-overlay" class="modal-overlay hidden" onclick="closeOcrModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
-        <h2>📷 截圖辨識倒數時間</h2>
-
-        <div class="form-group">
-          <label>上傳遊戲截圖</label>
-          <div class="ocr-upload-area" id="ocr-drop-zone" onclick="document.getElementById('ocr-file-input').click()">
-            <input type="file" id="ocr-file-input" accept="image/*" style="display:none" onchange="handleOcrFile(event)">
-            <div id="ocr-preview-area">
-              <div class="upload-placeholder">
-                <span style="font-size:36px">📸</span>
-                <p>點擊上傳或貼上截圖</p>
-                <p class="hint">支援直接 Ctrl+V / Cmd+V 貼上</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="ocr-status" class="hidden">
-          <div class="ocr-progress-bar"><div class="ocr-progress-fill" id="ocr-progress-fill"></div></div>
-          <p id="ocr-status-text">辨識中...</p>
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn-cancel" onclick="closeOcrModal()">取消</button>
+          <button class="btn-cancel" onclick="closeAddModal()" data-i18n="modal.cancel">取消</button>
+          <button class="btn-confirm" onclick="addTimer()" data-i18n="modal.confirm">開始計時</button>
         </div>
       </div>
     </div>
   </div>
 
+  <script src="paddle-ocr.js"></script>
+  <script src="mushroom-ocr.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
