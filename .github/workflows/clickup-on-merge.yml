@@ -1,0 +1,44 @@
+name: ClickUp — PR Merged → Complete
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  update-clickup:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract task ID from branch name
+        id: task
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          # 分支名稱就是 ClickUp task ID（如 86ex03yv9）
+          echo "task_id=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Update ClickUp task status to complete
+        run: |
+          curl -s -X PUT \
+            -H "Authorization: ${{ secrets.CLICKUP_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"status": "complete"}' \
+            "https://api.clickup.com/api/v2/task/${{ steps.task.outputs.task_id }}"
+
+      - name: Add comment with merge info
+        run: |
+          MERGED_BY="${{ github.event.pull_request.merged_by.login }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          COMMENT="✅ PR #${PR_NUMBER} 已合併至 main\n\n"
+          COMMENT+="📌 標題: ${PR_TITLE}\n"
+          COMMENT+="👤 合併者: ${MERGED_BY}\n"
+          COMMENT+="🔗 PR: ${PR_URL}"
+
+          curl -s -X POST \
+            -H "Authorization: ${{ secrets.CLICKUP_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"comment_text\": \"${COMMENT}\"}" \
+            "https://api.clickup.com/api/v2/task/${{ steps.task.outputs.task_id }}/comment"
