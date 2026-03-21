@@ -129,8 +129,17 @@ async function registerServiceWorker() {
 }
 
 // ─── Notification ───
-function checkNotificationPermission() {
-  // iOS standalone PWA check
+async function checkNotificationPermission() {
+  // Native App 不需要 A2HS 提示
+  if (Platform.isNative()) {
+    const status = await Platform.getNotificationStatus();
+    if (status === 'default' || status === 'prompt') {
+      showNotifyBanner();
+    }
+    return;
+  }
+
+  // PWA: iOS standalone check
   const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
@@ -178,33 +187,25 @@ function showNotifyBanner() {
 }
 
 async function requestNotification(btn) {
-  const permission = await Notification.requestPermission();
-  if (permission === 'granted') {
+  const granted = await Platform.requestPush();
+  if (granted) {
     btn.parentElement.remove();
   }
 }
 
 function sendNotification(timer) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const info = getMushroomInfo(timer.type, timer.colorKey);
   const title = '🍄 ' + i18n.t('notify.title');
   const body = timer.name
     ? i18n.t('notify.bodyNamed', { name: timer.name, mushroom: info.name })
     : i18n.t('notify.bodyDefault', { mushroom: info.name });
 
-  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification(title, {
-        body,
-        icon: 'icons/icon-192.png',
-        badge: 'icons/icon-192.png',
-        tag: `timer-${timer.id}`,
-        vibrate: [200, 100, 200],
-      });
-    });
-  } else {
-    new Notification(title, { body });
-  }
+  Platform.sendNotification({
+    id: timer.id,
+    title,
+    body,
+    icon: 'icons/icon-192.png',
+  });
 }
 
 // ─── Timer Tick ───
