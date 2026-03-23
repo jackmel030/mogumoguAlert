@@ -103,6 +103,22 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTimers();
     initTimeButtons();
   });
+
+  // 原生 App：排程所有未到期計時器的通知 + 監聽前景恢復
+  if (Platform.isNative()) {
+    scheduleAllTimerNotifications();
+    // Capacitor App plugin 監聽 appStateChange
+    const appPlugin = window.Capacitor?.Plugins?.App;
+    if (appPlugin) {
+      appPlugin.addListener('appStateChange', (state) => {
+        if (state.isActive) onAppResume();
+      });
+    }
+  }
+  // PWA：visibilitychange 作為 fallback
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') onAppResume();
+  });
 });
 
 function initLangSelect() {
@@ -208,6 +224,50 @@ function sendNotification(timer) {
   });
 }
 
+// ─── 背景通知排程（iOS 原生） ───
+// iOS App 進入背景後 setInterval 不執行，
+// 預先排程通知讓系統在到期時間觸發
+function scheduleTimerNotification(timer) {
+  if (!Platform.isNative() || timer.ready) return;
+  const remaining = timer.endTime - Date.now();
+  if (remaining <= 0) return;
+
+  const info = getMushroomInfo(timer.type, timer.colorKey);
+  const title = '🍄 ' + i18n.t('notify.title');
+  const body = timer.name
+    ? i18n.t('notify.bodyNamed', { name: timer.name, mushroom: info.name })
+    : i18n.t('notify.bodyDefault', { mushroom: info.name });
+
+  Platform.scheduleNotification({
+    id: parseInt(timer.id, 36) % 100000,
+    title,
+    body,
+    at: new Date(timer.endTime),
+  });
+}
+
+function scheduleAllTimerNotifications() {
+  timers.forEach(t => scheduleTimerNotification(t));
+}
+
+// App 從背景回到前景時，重新計算所有計時器狀態
+function onAppResume() {
+  const now = Date.now();
+  let changed = false;
+  timers.forEach(t => {
+    if (!t.ready && now >= t.endTime) {
+      t.ready = true;
+      t.readyAt = now;
+      changed = true;
+    }
+  });
+  if (changed) {
+    saveTimers();
+  }
+  renderTimers();
+  startTick();
+}
+
 // ─── Timer Tick ───
 function startTick() {
   if (tickInterval) clearInterval(tickInterval);
@@ -291,9 +351,11 @@ function insertTimer(type, name, totalSeconds, colorKey) {
     alert(i18n.t('timer.maxReached', { n: MAX_TIMERS }));
     return false;
   }
-  timers.unshift(createTimer(type, name, totalSeconds, colorKey));
+  const timer = createTimer(type, name, totalSeconds, colorKey);
+  timers.unshift(timer);
   saveTimers();
   renderTimers();
+  scheduleTimerNotification(timer);
   return true;
 }
 
@@ -358,6 +420,7 @@ function restartTimer(id) {
 
   saveTimers();
   renderTimers();
+  scheduleTimerNotification(timer);
 }
 
 function saveTimers() {
@@ -767,6 +830,7 @@ function confirmTimeEdit() {
 
   editingTimerId = null;
   saveTimers();
+  scheduleTimerNotification(timer);
   renderTimers();
 }
 
