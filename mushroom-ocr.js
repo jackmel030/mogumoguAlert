@@ -112,19 +112,30 @@ async function mushroomOCR(file, onProgress) {
   });
 
   // 3. 裁切白色面板區域辨識大小+顏色（黑字在白底上）
-  //    優先用 PaddleOCR（中文準確率較高），失敗則 fallback Tesseract
+  //    原生: VisionKit → PWA: PaddleOCR → fallback Tesseract
   report('辨識蘑菇類型...', 30);
   const panelBlob = cropRegion(img, REGIONS.panelText, { scale: 3, mode: 'binarize', threshold: 180 });
-  let panelText = await paddleOcrText(panelBlob, (msg) => report(msg, 35));
-  if (panelText !== null) {
-    console.log('[mushroom-ocr] 面板(PaddleOCR):', panelText);
-  } else {
-    // PaddleOCR 不可用 → fallback Tesseract
-    panelText = await ocrRegion(panelBlob, {
-      lang: 'chi_tra',
-      onProgress: (p) => report('辨識蘑菇類型...', 30 + p * 20),
-    });
-    console.log('[mushroom-ocr] 面板(Tesseract):', panelText);
+  let panelText = null;
+
+  // 原生環境：VisionKit（ocrRegion 內部已處理平台判斷）
+  if (typeof Platform !== 'undefined' && Platform.isNative()) {
+    panelText = await ocrRegion(panelBlob, {});
+    if (panelText) console.log('[mushroom-ocr] 面板(VisionKit):', panelText);
+  }
+
+  if (!panelText) {
+    // PWA: PaddleOCR 優先
+    panelText = await paddleOcrText(panelBlob, (msg) => report(msg, 35));
+    if (panelText !== null) {
+      console.log('[mushroom-ocr] 面板(PaddleOCR):', panelText);
+    } else {
+      // PaddleOCR 不可用 → fallback Tesseract
+      panelText = await ocrRegion(panelBlob, {
+        lang: 'chi_tra',
+        onProgress: (p) => report('辨識蘑菇類型...', 30 + p * 20),
+      });
+      console.log('[mushroom-ocr] 面板(Tesseract):', panelText);
+    }
   }
 
 
@@ -391,7 +402,26 @@ async function terminateWorkers() {
   }
 }
 
+/**
+ * Canvas → base64 轉換（供 VisionKit 使用）
+ */
+function canvasToBase64(canvas) {
+  return canvas.toDataURL('image/png');
+}
+
+/**
+ * OCR 文字辨識：原生環境優先 VisionKit，否則 Tesseract
+ */
 async function ocrRegion(canvas, opts = {}) {
+  // 原生環境優先使用 VisionKit（離線、快速）
+  if (typeof Platform !== 'undefined' && Platform.isNative()) {
+    const result = await Platform.runOCR(canvasToBase64(canvas));
+    if (result && result.text) {
+      console.log('[mushroom-ocr] VisionKit OCR:', result.text.trim());
+      return result.text.trim();
+    }
+  }
+  // PWA fallback: Tesseract
   const { lang = 'chi_tra+eng' } = opts;
   const worker = await getWorker(lang);
   const { data: { text } } = await worker.recognize(canvas);

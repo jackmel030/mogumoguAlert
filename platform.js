@@ -145,6 +145,46 @@ const Platform = (() => {
     }
   }
 
+  // ─── OCR 抽象 ───
+
+  let _cachedOCR = null;
+
+  function getVisionKitOCR() {
+    if (!isNative()) return null;
+    if (_cachedOCR) return _cachedOCR;
+    const plugins = window.Capacitor.Plugins;
+    if (plugins && plugins.VisionKitOCR) {
+      _cachedOCR = plugins.VisionKitOCR;
+    } else if (window.Capacitor.registerPlugin) {
+      _cachedOCR = window.Capacitor.registerPlugin('VisionKitOCR');
+    }
+    return _cachedOCR;
+  }
+
+  /**
+   * 執行 OCR 文字辨識
+   * Native iOS: VisionKit（離線、快速、支援繁中）
+   * PWA: 回傳 null，由呼叫端 fallback 到 Tesseract/PaddleOCR
+   *
+   * @param {string} base64Image - base64 編碼的圖片（可含 data URI prefix）
+   * @param {object} [options]
+   * @param {string[]} [options.languages] - 辨識語言，預設 ['zh-Hant', 'en']
+   * @returns {Promise<{text: string, blocks: Array} | null>} 辨識結果，或 null（非原生環境）
+   */
+  async function runOCR(base64Image, options = {}) {
+    const ocr = getVisionKitOCR();
+    if (!ocr) return null;
+    try {
+      return await ocr.recognize({
+        base64: base64Image,
+        languages: options.languages || ['zh-Hant', 'en'],
+      });
+    } catch (e) {
+      console.warn('[platform] VisionKit OCR failed:', e);
+      return null;
+    }
+  }
+
   return {
     isNative,
     getPlatform,
@@ -152,6 +192,7 @@ const Platform = (() => {
     getNotificationStatus,
     sendNotification,
     scheduleNotification,
+    runOCR,
   };
 
 })();
