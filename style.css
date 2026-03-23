@@ -17,10 +17,61 @@
   --purple: #a78bfa;
   --border: #334155;
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  /* Semantic color tokens */
+  --primary-bg-subtle: rgba(74, 222, 128, 0.08);
+  --primary-bg-light: rgba(74, 222, 128, 0.15);
+  --primary-bg-hover: rgba(74, 222, 128, 0.2);
+  --primary-bg-active: rgba(74, 222, 128, 0.3);
+  --primary-bg-strong: rgba(74, 222, 128, 0.4);
+  --primary-glow: rgba(74, 222, 128, 0.15);
+  --danger-bg-subtle: rgba(239, 68, 68, 0.15);
+  --danger-bg-active: rgba(239, 68, 68, 0.3);
+  --danger-badge-bg: rgba(239, 68, 68, 0.2);
+  --accent-bg-subtle: rgba(245, 158, 11, 0.1);
+  --accent-border-subtle: rgba(245, 158, 11, 0.3);
+  --info-bg-subtle: rgba(99, 102, 241, 0.1);
+  --info-border-subtle: rgba(99, 102, 241, 0.3);
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --header-gradient: linear-gradient(135deg, #2d5a1b 0%, #1a4a0e 100%);
+  --btn-confirm-text: #000;
+}
+
+[data-theme="light"] {
+  --bg: #f0f4e8;
+  --bg-card: #ffffff;
+  --bg-card-ready: #e8f5e9;
+  --primary: #2e7d32;
+  --primary-dark: #1b5e20;
+  --accent: #e65100;
+  --text: #1a1a1a;
+  --text-dim: #5a6a5a;
+  --danger: #c62828;
+  --purple: #6a1b9a;
+  --border: #c8d5b9;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --primary-bg-subtle: rgba(46, 125, 50, 0.06);
+  --primary-bg-light: rgba(46, 125, 50, 0.1);
+  --primary-bg-hover: rgba(46, 125, 50, 0.15);
+  --primary-bg-active: rgba(46, 125, 50, 0.25);
+  --primary-bg-strong: rgba(46, 125, 50, 0.35);
+  --primary-glow: rgba(46, 125, 50, 0.12);
+  --danger-bg-subtle: rgba(198, 40, 40, 0.08);
+  --danger-bg-active: rgba(198, 40, 40, 0.2);
+  --danger-badge-bg: rgba(198, 40, 40, 0.12);
+  --accent-bg-subtle: rgba(230, 81, 0, 0.06);
+  --accent-border-subtle: rgba(230, 81, 0, 0.2);
+  --info-bg-subtle: rgba(106, 27, 154, 0.06);
+  --info-border-subtle: rgba(106, 27, 154, 0.2);
+  --input-bg: rgba(0, 0, 0, 0.03);
+  --overlay-bg: rgba(0, 0, 0, 0.4);
+  --header-gradient: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+  --btn-confirm-text: #fff;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "PingFang TC", "Heiti TC", "Microsoft JhengHei", sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -31,7 +82,7 @@ body {
 header {
   text-align: center;
   padding: 24px 16px 8px;
-  background: linear-gradient(135deg, #2d5a1b 0%, #1a4a0e 100%);
+  background: var(--header-gradient);
 }
 
 header h1 {
@@ -46,12 +97,23 @@ header .subtitle {
   opacity: 0.8;
 }
 
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
 #add-section {
-  padding: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  padding: 12px 16px;
   background: var(--bg);
+  flex-shrink: 0;
+}
+
+#timer-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .btn-primary {
@@ -59,7 +121,7 @@ header .subtitle {
   padding: 14px;
   border: 2px dashed var(--primary);
   border-radius: 12px;
-  background: rgba(74, 222, 128, 0.08);
+  background: var(--primary-bg-subtle);
   color: var(--primary);
   font-size: 16px;
   font-weight: 600;
@@ -68,7 +130,7 @@ header .subtitle {
 }
 
 .btn-primary:active {
-  background: rgba(74, 222, 128, 0.2);
+  background: var(--primary-bg-hover);
   transform: scale(0.98);
 }
 
@@ -98,8 +160,8 @@ header .subtitle {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
-  50% { box-shadow: 0 0 20px 2px rgba(74, 222, 128, 0.15); }
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 20px 2px var(--primary-glow); }
 }
 
 .timer-card-header {
@@ -177,7 +239,7 @@ header .subtitle {
 }
 
 .timer-card .btn-restart {
-  background: rgba(74, 222, 128, 0.15);
+  background: var(--primary-bg-light);
   border: 1px solid var(--primary);
   color: var(--primary);
   padding: 6px 14px;
@@ -189,7 +251,7 @@ header .subtitle {
 }
 
 .timer-card .btn-restart:active {
-  background: rgba(74, 222, 128, 0.3);
+  background: var(--primary-bg-active);
   transform: scale(0.96);
 }
 
@@ -199,7 +261,7 @@ header .subtitle {
 }
 
 .btn-remove {
-  background: rgba(239, 68, 68, 0.15);
+  background: var(--danger-bg-subtle);
   border: 1px solid var(--danger);
   color: var(--danger);
   padding: 6px 14px;
@@ -211,8 +273,107 @@ header .subtitle {
 }
 
 .btn-remove:active {
-  background: rgba(239, 68, 68, 0.3);
+  background: var(--danger-bg-active);
   transform: scale(0.96);
+}
+
+/* Time Editor (滾輪調整) */
+.time-editor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.time-wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 56px;
+  user-select: none;
+  touch-action: none;
+}
+
+.wheel-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  width: 44px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.wheel-btn:active {
+  background: var(--primary-bg-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.wheel-value {
+  font-size: 32px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  padding: 4px 0;
+  min-width: 44px;
+  text-align: center;
+}
+
+.wheel-sep {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-dim);
+  padding: 0 2px;
+  align-self: center;
+}
+
+.wheel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.wheel-confirm {
+  background: var(--primary-bg-hover);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wheel-confirm:active {
+  background: var(--primary-bg-strong);
+  transform: scale(0.9);
+}
+
+.wheel-cancel {
+  background: var(--danger-bg-subtle);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wheel-cancel:active {
+  background: var(--danger-bg-active);
+  transform: scale(0.9);
 }
 
 /* Empty State */
@@ -238,7 +399,7 @@ header .subtitle {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-bg);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -317,7 +478,7 @@ header .subtitle {
 
 .type-btn.selected {
   border-color: var(--primary);
-  background: rgba(74, 222, 128, 0.1);
+  background: var(--primary-bg-subtle);
 }
 
 .time-options {
@@ -339,7 +500,7 @@ header .subtitle {
 
 .time-btn.selected {
   border-color: var(--accent);
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--accent-bg-subtle);
   color: var(--accent);
 }
 
@@ -358,7 +519,7 @@ header .subtitle {
   padding: 12px;
   border-radius: 10px;
   border: 2px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--input-bg);
   color: var(--text);
   font-size: 18px;
   font-weight: 600;
@@ -382,7 +543,7 @@ header .subtitle {
   padding: 12px;
   border-radius: 10px;
   border: 2px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--input-bg);
   color: var(--text);
   font-size: 15px;
   outline: none;
@@ -415,7 +576,7 @@ header .subtitle {
   border-radius: 12px;
   border: none;
   background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-  color: #000;
+  color: var(--btn-confirm-text);
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -434,8 +595,8 @@ header .subtitle {
 .notify-banner {
   margin: 0 16px 12px;
   padding: 12px 16px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: var(--accent-bg-subtle);
+  border: 1px solid var(--accent-border-subtle);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -471,8 +632,8 @@ header .subtitle {
 .a2hs-banner {
   margin: 0 16px 12px;
   padding: 14px 16px;
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: var(--info-bg-subtle);
+  border: 1px solid var(--info-border-subtle);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -504,24 +665,42 @@ header .subtitle {
   cursor: pointer;
 }
 
-/* OCR Button */
-.btn-ocr {
-  width: 100%;
-  padding: 12px;
-  margin-top: 8px;
-  border: 2px solid var(--purple);
-  border-radius: 12px;
-  background: rgba(167, 139, 250, 0.08);
-  color: var(--purple);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+/* OCR Section (固定底部) */
+#ocr-section {
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
 }
 
-.btn-ocr:active {
-  background: rgba(167, 139, 250, 0.2);
-  transform: scale(0.98);
+.ocr-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--purple);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ocr-toggle-icon {
+  font-size: 12px;
+  transition: transform 0.3s;
+}
+
+.ocr-toggle-icon.collapsed {
+  transform: rotate(-90deg);
+}
+
+#ocr-section-body {
+  padding: 0 16px 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+#ocr-section-body.collapsed {
+  display: none;
 }
 
 /* OCR Upload */
@@ -592,6 +771,40 @@ header .subtitle {
   text-align: center;
 }
 
+/* Timer name — 點擊可編輯 */
+.timer-name {
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.2s;
+}
+
+.timer-name:hover {
+  border-bottom-color: var(--text-dim);
+}
+
+.edit-icon {
+  opacity: 0.25;
+  margin-left: 4px;
+  vertical-align: middle;
+  transition: opacity 0.2s;
+}
+
+.timer-name:hover .edit-icon {
+  opacity: 0.6;
+}
+
+.edit-name-input {
+  width: 100%;
+  padding: 2px 6px;
+  border: 1px solid var(--green);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: inherit;
+  font-weight: inherit;
+  outline: none;
+}
+
 .btn-confirm:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -609,12 +822,58 @@ header .subtitle {
 }
 
 .timer-count-badge.full {
-  background: rgba(239, 68, 68, 0.2);
+  background: var(--danger-badge-bg);
   color: var(--danger);
 }
 
-#add-section {
+/* Theme toggle */
+.header-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0;
+  align-items: center;
+  gap: 4px;
 }
+
+.lang-select {
+  background: rgba(255,255,255,0.15);
+  color: inherit;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  padding: 2px 4px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+.lang-select option {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.theme-toggle-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: transform 0.3s;
+  line-height: 1;
+}
+
+.theme-toggle-btn:active {
+  transform: scale(0.85);
+}
+
+/* Theme transition */
+body,
+header,
+.timer-card,
+.modal,
+#ocr-section,
+#add-section,
+.btn-primary,
+.btn-remove,
+.btn-restart,
+.edit-name-input {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+

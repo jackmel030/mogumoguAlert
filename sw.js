@@ -1,10 +1,15 @@
-const CACHE_NAME = 'pikmin-timer-v3';
+const CACHE_NAME = 'pikmin-timer-v11';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
+  './platform.js',
+  './i18n.js',
+  './paddle-ocr.js',
+  './mushroom-ocr.js',
   './app.js',
   './manifest.json',
+  './favicon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];
