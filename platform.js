@@ -7,10 +7,8 @@
 
 const Platform = (() => {
 
-  /**
-   * 偵測是否在 Capacitor 原生環境中執行
-   * Capacitor 會在 WebView 中注入 window.Capacitor 物件
-   */
+  let _cachedLN = null;
+
   function isNative() {
     return !!(typeof window !== 'undefined'
       && window.Capacitor
@@ -19,7 +17,6 @@ const Platform = (() => {
   }
 
   /**
-   * 取得目前平台名稱
    * @returns {'ios' | 'android' | 'web'}
    */
   function getPlatform() {
@@ -29,24 +26,54 @@ const Platform = (() => {
 
   // ─── 推播通知抽象 ───
 
+  function getLocalNotifications() {
+    if (!isNative()) return null;
+    if (_cachedLN) return _cachedLN;
+    const plugins = window.Capacitor.Plugins;
+    if (plugins && plugins.LocalNotifications) {
+      _cachedLN = plugins.LocalNotifications;
+    } else if (window.Capacitor.registerPlugin) {
+      _cachedLN = window.Capacitor.registerPlugin('LocalNotifications');
+    }
+    return _cachedLN;
+  }
+
+  function normalizeId(id) {
+    return typeof id === 'number' ? id : Math.floor(Math.random() * 100000);
+  }
+
+  /**
+   * 排程原生本地通知（內部共用）
+   */
+  function scheduleNative(ln, { id, title, body, icon, at }) {
+    const notification = {
+      id: normalizeId(id),
+      title,
+      body,
+      sound: 'default',
+    };
+    if (icon) notification.largeIcon = icon;
+    // Capacitor LocalNotifications 需要明確的 schedule.at 才會觸發，
+    // 即使是「即時」通知也需提供一個近未來時間
+    notification.schedule = { at: at || new Date(Date.now() + 500) };
+    return ln.schedule({ notifications: [notification] });
+  }
+
   /**
    * 請求通知權限
-   * Native: 使用 Capacitor LocalNotifications
-   * PWA: 使用 Web Notification API
-   * @returns {Promise<boolean>} 是否取得權限
+   * @returns {Promise<boolean>}
    */
   async function requestPush() {
-    if (isNative()) {
+    const ln = getLocalNotifications();
+    if (ln) {
       try {
-        const { LocalNotifications } = await import('https://esm.sh/@capacitor/local-notifications');
-        const result = await LocalNotifications.requestPermissions();
+        const result = await ln.requestPermissions();
         return result.display === 'granted';
       } catch (e) {
         console.warn('[platform] Native notification permission failed:', e);
         return false;
       }
     }
-    // PWA
     if (!('Notification' in window)) return false;
     const permission = await Notification.requestPermission();
     return permission === 'granted';
@@ -57,11 +84,11 @@ const Platform = (() => {
    * @returns {Promise<'granted'|'denied'|'default'>}
    */
   async function getNotificationStatus() {
-    if (isNative()) {
+    const ln = getLocalNotifications();
+    if (ln) {
       try {
-        const { LocalNotifications } = await import('https://esm.sh/@capacitor/local-notifications');
-        const result = await LocalNotifications.checkPermissions();
-        return result.display; // 'granted' | 'denied' | 'prompt'
+        const result = await ln.checkPermissions();
+        return result.display;
       } catch {
         return 'default';
       }
@@ -71,24 +98,15 @@ const Platform = (() => {
   }
 
   /**
-   * 發送本地通知
-   * Native: Capacitor LocalNotifications（支援背景通知）
+   * 發送本地通知（即時）
+   * Native: Capacitor LocalNotifications
    * PWA: Web Notification / Service Worker
    */
   async function sendNotification({ id, title, body, icon }) {
-    if (isNative()) {
+    const ln = getLocalNotifications();
+    if (ln) {
       try {
-        const { LocalNotifications } = await import('https://esm.sh/@capacitor/local-notifications');
-        await LocalNotifications.schedule({
-          notifications: [{
-            id: typeof id === 'number' ? id : Math.floor(Math.random() * 100000),
-            title,
-            body,
-            sound: 'default',
-            smallIcon: 'ic_stat_icon',
-            largeIcon: icon || 'icons/icon-192.png',
-          }],
-        });
+        await scheduleNative(ln, { id, title, body, icon });
         return;
       } catch (e) {
         console.warn('[platform] Native notification failed, falling back to web:', e);
@@ -112,23 +130,14 @@ const Platform = (() => {
 
   /**
    * 排程本地通知（在指定時間觸發）
-   * Native: Capacitor LocalNotifications schedule
-   * PWA: 不支援排程，回傳 false
-   * @returns {Promise<boolean>} 是否成功排程
+   * Native only，PWA 回傳 false
+   * @returns {Promise<boolean>}
    */
   async function scheduleNotification({ id, title, body, at }) {
-    if (!isNative()) return false;
+    const ln = getLocalNotifications();
+    if (!ln) return false;
     try {
-      const { LocalNotifications } = await import('https://esm.sh/@capacitor/local-notifications');
-      await LocalNotifications.schedule({
-        notifications: [{
-          id: typeof id === 'number' ? id : Math.floor(Math.random() * 100000),
-          title,
-          body,
-          schedule: { at },
-          sound: 'default',
-        }],
-      });
+      await scheduleNative(ln, { id, title, body, at });
       return true;
     } catch (e) {
       console.warn('[platform] Schedule notification failed:', e);
